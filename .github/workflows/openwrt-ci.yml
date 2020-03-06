@@ -10,15 +10,21 @@
 name: OpenWrt-CI
 
 on:
-  schedule:
-    - cron: 0 20 * * *
-
+  push:
+    branches:
+      - dev-lean-lede
+  #schedule:
+  #  - cron: 0 20 * * *
+  watch:
+    types: started
+    
 jobs:
 
   build:
 
     runs-on: ubuntu-latest
-
+    if: github.event.repository.owner.id == github.event.sender.id
+    
     steps:
       - name: Checkout
         uses: actions/checkout@master
@@ -54,8 +60,17 @@ jobs:
           ./scripts/feeds install -a
 
       - name: Generate configuration file
-        run: make defconfig
-
+        run: |
+          rm -f ./.config*
+          touch ./.config
+          cat >> .config <<EOF
+          CONFIG_TARGET_armvirt=y
+          CONFIG_TARGET_armvirt_64=y
+          CONFIG_TARGET_armvirt_64_Default=y
+          EOF
+          sed -i 's/^[ \t]*//g' ./.config
+          make defconfig
+        
       - name: Make download
         run: |
           make download -j8
